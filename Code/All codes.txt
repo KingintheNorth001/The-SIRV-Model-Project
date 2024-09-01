@@ -1,0 +1,2 @@
+This folder contains three files. They are- codes using the datasets, codes using manual input paramters and finally the code which we used
+to make the MATLAB in-built APPS using GUI.

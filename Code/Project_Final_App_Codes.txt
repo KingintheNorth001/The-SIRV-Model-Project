@@ -1,0 +1,478 @@
+classdef project_finalunga < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure                       matlab.ui.Figure
+        VaccinationrateEditField_2     matlab.ui.control.NumericEditField
+        VaccinationrateEditField_2Label  matlab.ui.control.Label
+        SimulateButton_2               matlab.ui.control.Button
+        PopulationEditField            matlab.ui.control.NumericEditField
+        PopulationEditFieldLabel       matlab.ui.control.Label
+        DaysEditField_2                matlab.ui.control.NumericEditField
+        DaysEditField_2Label           matlab.ui.control.Label
+        DaysEditField                  matlab.ui.control.NumericEditField
+        DaysEditFieldLabel             matlab.ui.control.Label
+        VaccinationrateEditField       matlab.ui.control.NumericEditField
+        VaccinationrateEditFieldLabel  matlab.ui.control.Label
+        GammaEditField                 matlab.ui.control.NumericEditField
+        GammaEditFieldLabel            matlab.ui.control.Label
+        BetaEditField                  matlab.ui.control.NumericEditField
+        BetaEditFieldLabel             matlab.ui.control.Label
+        SettheParameterLabel           matlab.ui.control.Label
+        chooseadatasetLabel            matlab.ui.control.Label
+        SimulateButton                 matlab.ui.control.Button
+        DataDropDown                   matlab.ui.control.DropDown
+        DataDropDownLabel              matlab.ui.control.Label
+        Process02Label                 matlab.ui.control.Label
+        Process01Label                 matlab.ui.control.Label
+        TheSIRVModelLabel              matlab.ui.control.Label
+    end
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Button pushed function: SimulateButton
+        function SimulateButtonPushed(app, event)
+            clc;close all;
+switch app.DataDropDown.Value
+    case 'China'
+      load("C:\Users\User\OneDrive - BUET\Level-2 Term-1\EEE 212- Matlab Lab\prj\SIR_China.mat");
+      Data=SIRChinaHubei;
+    case 'France'
+        load("C:\Users\User\OneDrive - BUET\Level-2 Term-1\EEE 212- Matlab Lab\prj\SIR_France.mat");
+        Data=SIRFrance;
+    case 'Germany'
+        load("C:\Users\User\OneDrive - BUET\Level-2 Term-1\EEE 212- Matlab Lab\prj\SIR_Germany2.mat");
+        Data=SIRGermany2;
+    case 'Italy'
+       load("C:\Users\User\OneDrive - BUET\Level-2 Term-1\EEE 212- Matlab Lab\prj\SIR_Italy.mat");
+       Data=SIRItaly;
+    case 'Japan'
+        load("C:\Users\User\OneDrive - BUET\Level-2 Term-1\EEE 212- Matlab Lab\prj\JAPAN.mat");
+        Data=SIRJapan;
+    case 'New-York'
+       load("C:\Users\HP\OneDrive - BUET\level 2 term 01\EEE 212 MATLAB\project\app\SIR_Newyork.mat");
+       Data=SIRNewYork;
+    case 'Spain'
+        load("C:\Users\User\OneDrive - BUET\Level-2 Term-1\EEE 212- Matlab Lab\prj\SIR_Spain.mat");
+        Data=SIRSpain;
+    case 'USA'
+        load("C:\Users\HP\OneDrive - BUET\level 2 term 01\EEE 212 MATLAB\project\app\SIR_USA.mat");
+        Data=SIRUSAWashington;
+    case 'India'
+        load("C:\Users\HP\OneDrive - BUET\level 2 term 01\EEE 212 MATLAB\project\app\SIR_india.mat");
+        Data=SIRIndia;
+end
+S=table2array(Data(:,2));
+I=table2array(Data(:,3));
+R=table2array(Data(:,4));
+sz=size(S);
+sz=max(sz);
+beta=zeros(1,sz-1);
+gamma=zeros(1,sz-1);
+indx=find(I>0,1,"first");
+for i=indx:sz-1
+    beta(i)=((I(i+1)-I(i))+(R(i+1)-R(i)))/I(i);
+    gamma(i)=(R(i+1)-R(i))/I(i);
+end
+avg_beta=sum(beta)/(sz-1);
+avg_gamma=sum(gamma)/(sz-1);
+
+%function initialization
+sirvI=@(ys,yi,beta,gama,N) (beta*ys*yi)/N-(gama*yi);
+sirvR=@(yi,yr,gama) (gama*yi);
+sirvS=@(ys,yi,beta,ro,yr,N) (-beta*ys*yi)/N-(ro*ys);
+sirvV=@(ys,ro) ro*ys;
+%initialize parameter
+a=0;            %starting point
+b=app.DaysEditField.Value; %end point
+h=0.001;         %step size   
+n=(b-a)/h;      %partition number
+x=a:h:b;         
+N=S(1)+I(1)+R(1);       %Total population
+beta=avg_beta;     %rate of infection
+gama=avg_gamma;    %rate of recovery
+ro=app.VaccinationrateEditField_2.Value;       %rate of vaccinization
+iniI=0.2*N;
+iniR=0.05*N;
+iniV=0;
+iniS=N-iniI-iniR -iniV;
+%s: suspectible
+ys=zeros(1,n+1);
+ys(1)=iniS;
+%i: infectous
+yi=zeros(1,n+1);
+yi(1)=iniI;
+%r: recovered
+yr=zeros(1,n+1);
+yr(1)=iniR;
+%v: vaccinised
+yv=zeros(1,n+1);
+yv(1)=iniV;
+%calculating by RK method
+for i=1:n
+%K1
+s_k1=sirvS(ys(i),yi(i),beta,ro,yr(i),N);
+i_k1=sirvI(ys(i),yi(i),beta,gama,N);
+r_k1=sirvR(yi(i),yr(i),gama);
+v_k1=sirvV(ys(i),ro);
+%K2
+s_k2=sirvS(ys(i)+(0.5*s_k1*h),yi(i)+(0.5*i_k1*h),beta,ro,yr(i)+(0.5*r_k1*h),N);
+i_k2=sirvI(ys(i)+(0.5*s_k1*h),yi(i)+(0.5*i_k1*h),beta,gama,N);
+r_k2=sirvR(yi(i)+(0.5*i_k1*h),yr(i)+(0.5*r_k1*h),gama);
+v_k2=sirvV(ys(i)+(0.5*s_k1*h),ro);
+%K3
+s_k3=sirvS(ys(i)+(0.5*s_k2*h),yi(i)+(0.5*i_k2*h),beta,ro,yr(i)+(0.5*r_k2*h),N);
+i_k3=sirvI(ys(i)+(0.5*s_k2*h),yi(i)+(0.5*i_k2*h),beta,gama,N);
+r_k3=sirvR(yi(i)+(0.5*i_k2*h),yr(i)+(0.5*r_k2*h),gama);
+v_k3=sirvV(ys(i)+(0.5*s_k2*h),ro);
+%K4
+s_k4=sirvS(ys(i)+(s_k3*h),yi(i)+(i_k3*h),beta,ro,yr(i)+(r_k3*h),N);
+i_k4=sirvI(ys(i)+(s_k3*h),yi(i)+(i_k3*h),beta,gama,N);
+r_k4=sirvR(yi(i)+(i_k3*h),yr(i)+(r_k3*h),gama);
+v_k4=sirvV(ys(i)+(s_k3*h),ro);
+%y(i+1)
+ys(i+1)=ys(i)+((h/6)*(s_k1+(2*s_k2)+(2*s_k3)+s_k4));
+yi(i+1)=yi(i)+((h/6)*(i_k1+(2*i_k2)+(2*i_k3)+i_k4));
+yr(i+1)=yr(i)+((h/6)*(r_k1+(2*r_k2)+(2*r_k3)+r_k4));
+yv(i+1)=yv(i)+((h/6)*(v_k1+(2*v_k2)+(2*v_k3)+v_k4));
+end
+
+nm=app.DataDropDown.Value;
+plot(x,ys,'b',x,yi,'r',x,yr,'g',x,yv,'black',LineWidth=2);
+title("SIRV Model By Dataset",nm,"FontSize",15)
+xlabel('Time(in days)',FontSize=15);
+legend('S','I','R','V',fontsize=15);
+
+        end
+
+        % Button pushed function: SimulateButton_2
+        function SimulateButton_2Pushed(app, event)
+            clc;close all;
+            %function initialization
+sirvI=@(ys,yi,beta,gama,N) (beta*ys*yi)/N-(gama*yi);
+sirvR=@(yi,yr,gama) (gama*yi);
+sirvS=@(ys,yi,beta,ro,yr,N) (-beta*ys*yi)/N-(ro*ys);
+sirvV=@(ys,ro) ro*ys;
+%initialize parameter
+a=0;            %starting point
+b=app.DaysEditField_2.Value; %end point
+h=0.01;         %step size   
+n=(b-a)/h;      %partition number
+x=a:h:b;         
+N=app.PopulationEditField.Value;       %Total population
+beta=app.BetaEditField.Value;     %rate of infection
+gama=app.GammaEditField.Value;    %rate of recovery
+ro=app.VaccinationrateEditField.Value;       %rate of vaccinization
+iniI=0.1*N;
+iniR=0.05*N;
+iniV=0;
+iniS=N-iniI-iniR-iniV;
+%s: suspectible
+ys=zeros(1,n+1);
+ys(1)=iniS;
+%i: infectous
+yi=zeros(1,n+1);
+yi(1)=iniI;
+%r: recovered
+yr=zeros(1,n+1);
+yr(1)=iniR;
+%v: vaccinised
+yv=zeros(1,n+1);
+yv(1)=iniV;
+%calculating by RK method
+for i=1:n
+%K1
+s_k1=sirvS(ys(i),yi(i),beta,ro,yr(i),N);
+i_k1=sirvI(ys(i),yi(i),beta,gama,N);
+r_k1=sirvR(yi(i),yr(i),gama);
+v_k1=sirvV(ys(i),ro);
+%K2
+s_k2=sirvS(ys(i)+(0.5*s_k1*h),yi(i)+(0.5*i_k1*h),beta,ro,yr(i)+(0.5*r_k1*h),N);
+i_k2=sirvI(ys(i)+(0.5*s_k1*h),yi(i)+(0.5*i_k1*h),beta,gama,N);
+r_k2=sirvR(yi(i)+(0.5*i_k1*h),yr(i)+(0.5*r_k1*h),gama);
+v_k2=sirvV(ys(i)+(0.5*s_k1*h),ro);
+%K3
+s_k3=sirvS(ys(i)+(0.5*s_k2*h),yi(i)+(0.5*i_k2*h),beta,ro,yr(i)+(0.5*r_k2*h),N);
+i_k3=sirvI(ys(i)+(0.5*s_k2*h),yi(i)+(0.5*i_k2*h),beta,gama,N);
+r_k3=sirvR(yi(i)+(0.5*i_k2*h),yr(i)+(0.5*r_k2*h),gama);
+v_k3=sirvV(ys(i)+(0.5*s_k2*h),ro);
+%K4
+s_k4=sirvS(ys(i)+(s_k3*h),yi(i)+(i_k3*h),beta,ro,yr(i)+(r_k3*h),N);
+i_k4=sirvI(ys(i)+(s_k3*h),yi(i)+(i_k3*h),beta,gama,N);
+r_k4=sirvR(yi(i)+(i_k3*h),yr(i)+(r_k3*h),gama);
+v_k4=sirvV(ys(i)+(s_k3*h),ro);
+%y(i+1)
+ys(i+1)=ys(i)+((h/6)*(s_k1+(2*s_k2)+(2*s_k3)+s_k4));
+yi(i+1)=yi(i)+((h/6)*(i_k1+(2*i_k2)+(2*i_k3)+i_k4));
+yr(i+1)=yr(i)+((h/6)*(r_k1+(2*r_k2)+(2*r_k3)+r_k4));
+yv(i+1)=yv(i)+((h/6)*(v_k1+(2*v_k2)+(2*v_k3)+v_k4));
+end
+
+
+plot(x,ys,'b',x,yi,'r',x,yr,'g',x,yv,'black',LineWidth=2);
+title("SIRV Model By setting the parameter","FontSize",10);
+xlabel('Time(in days)',FontSize=15);
+legend('S','I','R','V',fontsize=15);
+
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Color = [0.1686 0.1647 0.298];
+            app.UIFigure.Position = [100 100 640 480];
+            app.UIFigure.Name = 'MATLAB App';
+
+            % Create TheSIRVModelLabel
+            app.TheSIRVModelLabel = uilabel(app.UIFigure);
+            app.TheSIRVModelLabel.BackgroundColor = [0.702 0.0745 0.0706];
+            app.TheSIRVModelLabel.HorizontalAlignment = 'center';
+            app.TheSIRVModelLabel.FontName = 'Futura';
+            app.TheSIRVModelLabel.FontSize = 24;
+            app.TheSIRVModelLabel.FontWeight = 'bold';
+            app.TheSIRVModelLabel.FontColor = [1 1 1];
+            app.TheSIRVModelLabel.Position = [1 425 640 56];
+            app.TheSIRVModelLabel.Text = 'The SIRV Model';
+
+            % Create Process01Label
+            app.Process01Label = uilabel(app.UIFigure);
+            app.Process01Label.BackgroundColor = [0.9176 0.5647 0.4235];
+            app.Process01Label.HorizontalAlignment = 'center';
+            app.Process01Label.FontName = 'Times New Roman';
+            app.Process01Label.FontSize = 18;
+            app.Process01Label.FontWeight = 'bold';
+            app.Process01Label.FontColor = [0.149 0.149 0.149];
+            app.Process01Label.Position = [36 393 175 30];
+            app.Process01Label.Text = 'Process 01';
+
+            % Create Process02Label
+            app.Process02Label = uilabel(app.UIFigure);
+            app.Process02Label.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.Process02Label.HorizontalAlignment = 'center';
+            app.Process02Label.FontName = 'Times New Roman';
+            app.Process02Label.FontSize = 18;
+            app.Process02Label.FontWeight = 'bold';
+            app.Process02Label.FontColor = [0.149 0.149 0.149];
+            app.Process02Label.Position = [412 394 164 30];
+            app.Process02Label.Text = 'Process 02';
+
+            % Create DataDropDownLabel
+            app.DataDropDownLabel = uilabel(app.UIFigure);
+            app.DataDropDownLabel.BackgroundColor = [0.9176 0.5647 0.4235];
+            app.DataDropDownLabel.FontName = 'Times New Roman';
+            app.DataDropDownLabel.FontSize = 18;
+            app.DataDropDownLabel.FontWeight = 'bold';
+            app.DataDropDownLabel.Position = [34 286 42 24];
+            app.DataDropDownLabel.Text = 'Data';
+
+            % Create DataDropDown
+            app.DataDropDown = uidropdown(app.UIFigure);
+            app.DataDropDown.Items = {'China', 'France', 'Germany', 'Italy', 'Japan', 'New-York', 'Spain', 'USA', 'India'};
+            app.DataDropDown.FontName = 'Times New Roman';
+            app.DataDropDown.FontSize = 18;
+            app.DataDropDown.FontWeight = 'bold';
+            app.DataDropDown.BackgroundColor = [0.9176 0.5647 0.4235];
+            app.DataDropDown.Position = [81 273 130 50];
+            app.DataDropDown.Value = 'China';
+
+            % Create SimulateButton
+            app.SimulateButton = uibutton(app.UIFigure, 'push');
+            app.SimulateButton.ButtonPushedFcn = createCallbackFcn(app, @SimulateButtonPushed, true);
+            app.SimulateButton.BackgroundColor = [0.702 0.0745 0.0706];
+            app.SimulateButton.FontWeight = 'bold';
+            app.SimulateButton.FontColor = [1 1 1];
+            app.SimulateButton.Position = [34 63 175 31];
+            app.SimulateButton.Text = 'Simulate';
+
+            % Create chooseadatasetLabel
+            app.chooseadatasetLabel = uilabel(app.UIFigure);
+            app.chooseadatasetLabel.BackgroundColor = [0.9176 0.5647 0.4235];
+            app.chooseadatasetLabel.HorizontalAlignment = 'center';
+            app.chooseadatasetLabel.FontName = 'Times New Roman';
+            app.chooseadatasetLabel.FontSize = 18;
+            app.chooseadatasetLabel.FontWeight = 'bold';
+            app.chooseadatasetLabel.FontColor = [0.149 0.149 0.149];
+            app.chooseadatasetLabel.Position = [34 340 177 38];
+            app.chooseadatasetLabel.Text = 'choose a dataset ';
+
+            % Create SettheParameterLabel
+            app.SettheParameterLabel = uilabel(app.UIFigure);
+            app.SettheParameterLabel.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.SettheParameterLabel.HorizontalAlignment = 'center';
+            app.SettheParameterLabel.FontName = 'Times New Roman';
+            app.SettheParameterLabel.FontSize = 18;
+            app.SettheParameterLabel.FontWeight = 'bold';
+            app.SettheParameterLabel.FontColor = [0.149 0.149 0.149];
+            app.SettheParameterLabel.Position = [412 355 164 30];
+            app.SettheParameterLabel.Text = 'Set the Parameter';
+
+            % Create BetaEditFieldLabel
+            app.BetaEditFieldLabel = uilabel(app.UIFigure);
+            app.BetaEditFieldLabel.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.BetaEditFieldLabel.HorizontalAlignment = 'right';
+            app.BetaEditFieldLabel.FontName = 'Times New Roman';
+            app.BetaEditFieldLabel.FontSize = 14;
+            app.BetaEditFieldLabel.FontWeight = 'bold';
+            app.BetaEditFieldLabel.Position = [422 311 32 22];
+            app.BetaEditFieldLabel.Text = 'Beta';
+
+            % Create BetaEditField
+            app.BetaEditField = uieditfield(app.UIFigure, 'numeric');
+            app.BetaEditField.FontName = 'Times New Roman';
+            app.BetaEditField.FontSize = 14;
+            app.BetaEditField.FontWeight = 'bold';
+            app.BetaEditField.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.BetaEditField.Position = [469 311 106 30];
+
+            % Create GammaEditFieldLabel
+            app.GammaEditFieldLabel = uilabel(app.UIFigure);
+            app.GammaEditFieldLabel.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.GammaEditFieldLabel.HorizontalAlignment = 'right';
+            app.GammaEditFieldLabel.FontName = 'Times New Roman';
+            app.GammaEditFieldLabel.FontSize = 14;
+            app.GammaEditFieldLabel.FontWeight = 'bold';
+            app.GammaEditFieldLabel.Position = [423 273 53 22];
+            app.GammaEditFieldLabel.Text = 'Gamma';
+
+            % Create GammaEditField
+            app.GammaEditField = uieditfield(app.UIFigure, 'numeric');
+            app.GammaEditField.FontName = 'Times New Roman';
+            app.GammaEditField.FontSize = 14;
+            app.GammaEditField.FontWeight = 'bold';
+            app.GammaEditField.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.GammaEditField.Position = [491 273 82 30];
+
+            % Create VaccinationrateEditFieldLabel
+            app.VaccinationrateEditFieldLabel = uilabel(app.UIFigure);
+            app.VaccinationrateEditFieldLabel.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.VaccinationrateEditFieldLabel.HorizontalAlignment = 'right';
+            app.VaccinationrateEditFieldLabel.FontName = 'Times New Roman';
+            app.VaccinationrateEditFieldLabel.FontSize = 14;
+            app.VaccinationrateEditFieldLabel.FontWeight = 'bold';
+            app.VaccinationrateEditFieldLabel.Position = [361 227 107 33];
+            app.VaccinationrateEditFieldLabel.Text = 'Vaccination rate';
+
+            % Create VaccinationrateEditField
+            app.VaccinationrateEditField = uieditfield(app.UIFigure, 'numeric');
+            app.VaccinationrateEditField.FontName = 'Times New Roman';
+            app.VaccinationrateEditField.FontSize = 14;
+            app.VaccinationrateEditField.FontWeight = 'bold';
+            app.VaccinationrateEditField.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.VaccinationrateEditField.Position = [472 231 103 32];
+
+            % Create DaysEditFieldLabel
+            app.DaysEditFieldLabel = uilabel(app.UIFigure);
+            app.DaysEditFieldLabel.BackgroundColor = [0.9176 0.5647 0.4235];
+            app.DaysEditFieldLabel.HorizontalAlignment = 'right';
+            app.DaysEditFieldLabel.FontName = 'Times New Roman';
+            app.DaysEditFieldLabel.FontSize = 14;
+            app.DaysEditFieldLabel.FontWeight = 'bold';
+            app.DaysEditFieldLabel.Position = [30 147 35 22];
+            app.DaysEditFieldLabel.Text = 'Days';
+
+            % Create DaysEditField
+            app.DaysEditField = uieditfield(app.UIFigure, 'numeric');
+            app.DaysEditField.FontName = 'Times New Roman';
+            app.DaysEditField.FontSize = 14;
+            app.DaysEditField.FontWeight = 'bold';
+            app.DaysEditField.BackgroundColor = [0.9176 0.5647 0.4235];
+            app.DaysEditField.Position = [80 147 127 31];
+
+            % Create DaysEditField_2Label
+            app.DaysEditField_2Label = uilabel(app.UIFigure);
+            app.DaysEditField_2Label.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.DaysEditField_2Label.HorizontalAlignment = 'right';
+            app.DaysEditField_2Label.FontName = 'Times New Roman';
+            app.DaysEditField_2Label.FontSize = 14;
+            app.DaysEditField_2Label.FontWeight = 'bold';
+            app.DaysEditField_2Label.Position = [409 147 35 22];
+            app.DaysEditField_2Label.Text = 'Days';
+
+            % Create DaysEditField_2
+            app.DaysEditField_2 = uieditfield(app.UIFigure, 'numeric');
+            app.DaysEditField_2.FontSize = 14;
+            app.DaysEditField_2.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.DaysEditField_2.Position = [459 147 117 31];
+
+            % Create PopulationEditFieldLabel
+            app.PopulationEditFieldLabel = uilabel(app.UIFigure);
+            app.PopulationEditFieldLabel.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.PopulationEditFieldLabel.HorizontalAlignment = 'right';
+            app.PopulationEditFieldLabel.FontName = 'Times New Roman';
+            app.PopulationEditFieldLabel.FontSize = 14;
+            app.PopulationEditFieldLabel.FontWeight = 'bold';
+            app.PopulationEditFieldLabel.Position = [380 191 88 24];
+            app.PopulationEditFieldLabel.Text = 'Population';
+
+            % Create PopulationEditField
+            app.PopulationEditField = uieditfield(app.UIFigure, 'numeric');
+            app.PopulationEditField.FontName = 'Times New Roman';
+            app.PopulationEditField.FontSize = 14;
+            app.PopulationEditField.FontWeight = 'bold';
+            app.PopulationEditField.BackgroundColor = [0.9333 0.8863 0.8706];
+            app.PopulationEditField.Position = [473 191 103 32];
+
+            % Create SimulateButton_2
+            app.SimulateButton_2 = uibutton(app.UIFigure, 'push');
+            app.SimulateButton_2.ButtonPushedFcn = createCallbackFcn(app, @SimulateButton_2Pushed, true);
+            app.SimulateButton_2.BackgroundColor = [0.702 0.0745 0.0706];
+            app.SimulateButton_2.FontWeight = 'bold';
+            app.SimulateButton_2.FontColor = [1 1 1];
+            app.SimulateButton_2.Position = [401 63 175 31];
+            app.SimulateButton_2.Text = 'Simulate';
+
+            % Create VaccinationrateEditField_2Label
+            app.VaccinationrateEditField_2Label = uilabel(app.UIFigure);
+            app.VaccinationrateEditField_2Label.BackgroundColor = [0.9176 0.5647 0.4235];
+            app.VaccinationrateEditField_2Label.HorizontalAlignment = 'right';
+            app.VaccinationrateEditField_2Label.FontName = 'Times New Roman';
+            app.VaccinationrateEditField_2Label.FontSize = 14;
+            app.VaccinationrateEditField_2Label.FontWeight = 'bold';
+            app.VaccinationrateEditField_2Label.Position = [20 206 105 33];
+            app.VaccinationrateEditField_2Label.Text = 'Vaccination rate';
+
+            % Create VaccinationrateEditField_2
+            app.VaccinationrateEditField_2 = uieditfield(app.UIFigure, 'numeric');
+            app.VaccinationrateEditField_2.FontName = 'Times New Roman';
+            app.VaccinationrateEditField_2.FontSize = 14;
+            app.VaccinationrateEditField_2.FontWeight = 'bold';
+            app.VaccinationrateEditField_2.BackgroundColor = [0.9176 0.5647 0.4235];
+            app.VaccinationrateEditField_2.Position = [134 206 77 31];
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = project_finalunga
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
